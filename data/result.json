@@ -1,0 +1,32 @@
+{
+  "status": "completed",
+  "reason": "capture returned COMPLETED",
+  "orderId": "ORD-M33JW3L8",
+  "capturedAmount": "12.50",
+  "trace": [
+    {
+      "step": "guardrail.evaluate",
+      "ok": true,
+      "detail": "amount.within_limits :: within every configured limit",
+      "durationMs": 0
+    },
+    {
+      "step": "paypal.create_order",
+      "ok": true,
+      "detail": "order ORD-M33JW3L8 status CREATED",
+      "durationMs": 87
+    },
+    {
+      "step": "paypal.capture_order",
+      "ok": true,
+      "detail": "status COMPLETED",
+      "durationMs": 49
+    },
+    {
+      "step": "guardrail.commit",
+      "ok": true,
+      "detail": "ledger updated, spent today 12.5",
+      "durationMs": 0
+    }
+  ]
+}

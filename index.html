@@ -1,390 +1,94 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PayPal Agentic Checkout Gateway 💳🤖 | Devpost PayPal AI Hackathon</title>
-  <meta name="description" content="Autonomous AI Agent commerce & micro-payment gateway for PayPal Sandbox and x402 protocol with spending limits and budget guardrails.">
-  <style>
-    :root {
-      --bg: #090c14;
-      --card-bg: #101524;
-      --card-border: #1d263f;
-      --paypal-blue: #0070BA;
-      --paypal-darkblue: #003087;
-      --paypal-gold: #FFC439;
-      --secondary: #14F195;
-      --accent: #38bdf8;
-      --warning: #f59e0b;
-      --danger: #ef4444;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.5;
-    }
-
-    header {
-      background: linear-gradient(180deg, rgba(0, 112, 186, 0.18) 0%, rgba(9, 12, 20, 0) 100%);
-      padding: 2.5rem 2rem 1.5rem;
-      border-bottom: 1px solid var(--card-border);
-      text-align: center;
-    }
-
-    .badge {
-      display: inline-block;
-      background: rgba(0, 112, 186, 0.2);
-      color: #38bdf8;
-      border: 1px solid rgba(0, 112, 186, 0.4);
-      padding: 0.3rem 0.8rem;
-      border-radius: 999px;
-      font-size: 0.8rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.75rem;
-    }
-
-    h1 {
-      font-size: 2.2rem;
-      font-weight: 800;
-      background: linear-gradient(90deg, #ffffff 0%, #38bdf8 50%, var(--paypal-blue) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 0.5rem;
-    }
-
-    .subtitle {
-      font-size: 1.05rem;
-      color: var(--text-muted);
-      max-width: 780px;
-      margin: 0 auto 1.5rem;
-    }
-
-    .btn-group {
-      display: flex;
-      justify-content: center;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.65rem 1.25rem;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 0.9rem;
-      text-decoration: none;
-      transition: all 0.2s ease;
-      cursor: pointer;
-      border: none;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, var(--paypal-blue) 0%, #005ea6 100%);
-      color: #fff;
-    }
-
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(0, 112, 186, 0.4);
-    }
-
-    .btn-secondary {
-      background: var(--card-bg);
-      color: var(--paypal-gold);
-      border: 1px solid var(--paypal-gold);
-    }
-
-    .container {
-      max-width: 1250px;
-      margin: 0 auto;
-      padding: 2rem 1.5rem 4rem;
-    }
-
-    /* Top Stats */
-    .stats-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-      margin-bottom: 2rem;
-    }
-
-    .stat-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 10px;
-      padding: 1.25rem;
-    }
-
-    .stat-lbl {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      font-weight: 600;
-    }
-
-    .stat-val {
-      font-size: 1.5rem;
-      font-weight: 800;
-      color: #38bdf8;
-      margin-top: 0.25rem;
-    }
-
-    /* Main Grid */
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
-
-    @media (max-width: 900px) {
-      .dashboard-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .panel {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 1.5rem;
-    }
-
-    .panel-title {
-      font-size: 1.15rem;
-      font-weight: 700;
-      margin-bottom: 1.25rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .item-card {
-      background: #080b14;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 0.85rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .item-title {
-      font-weight: 700;
-      font-size: 0.95rem;
-      color: #fff;
-    }
-
-    .item-desc {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
-
-    .btn-buy {
-      background: var(--paypal-gold);
-      color: #000;
-      font-weight: 700;
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      transition: all 0.2s ease;
-    }
-
-    .btn-buy:hover {
-      background: #ffd369;
-      transform: translateY(-1px);
-    }
-
-    .log-box {
-      background: #060810;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 1rem;
-      font-family: monospace;
-      font-size: 0.8rem;
-      color: #38bdf8;
-      min-height: 180px;
-      max-height: 250px;
-      overflow-y: auto;
-    }
-
-    footer {
-      border-top: 1px solid var(--card-border);
-      text-align: center;
-      padding: 2rem;
-      color: var(--text-muted);
-      font-size: 0.85rem;
-    }
-
-    footer a {
-      color: #38bdf8;
-      text-decoration: none;
-    }
-  </style>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agent Checkout - purchase trace</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+:root{--bg:#06080f;--panel:#0d1220;--line:#1e2740;--ink:#e9eefb;--muted:#8b98b8;--pp:#38bdf8;--ok:#34d399;--warn:#fbbf24}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:radial-gradient(900px 460px at 20% -10%,#10203f 0%,var(--bg) 62%);color:var(--ink);font-family:"IBM Plex Mono",monospace;line-height:1.55}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 22px 70px}
+header{display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px;align-items:flex-end;border-bottom:1px solid var(--line);padding-bottom:16px}
+h1{font-family:"Space Grotesk",sans-serif;font-size:clamp(21px,3vw,34px)}h1 em{color:var(--pp);font-style:normal}
+.eyebrow{color:var(--muted);font-size:11px;letter-spacing:.2em;text-transform:uppercase}
+.sub{color:var(--muted);font-size:12px;margin-top:7px;max-width:620px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:22px}
+.stat{background:#0a0f1c;padding:12px 14px}
+.stat .k{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.stat .v{font-family:"Space Grotesk",sans-serif;font-size:20px;margin-top:2px}
+.cols{display:grid;grid-template-columns:1.15fr 1fr;gap:18px;margin-top:20px}
+@media(max-width:880px){.cols{grid-template-columns:1fr}}
+.panel{background:linear-gradient(180deg,rgba(15,22,38,.95),rgba(8,11,20,.96));border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.panel h2{font-family:"Space Grotesk",sans-serif;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+td,th{padding:8px 13px;border-bottom:1px solid rgba(30,39,64,.85);text-align:left}
+th{color:var(--muted);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:500}
+.ok{color:var(--ok)}.fail{color:var(--warn)}.step{color:var(--pp)}
+.note{padding:12px 14px;font-size:11px;color:var(--muted);border-top:1px solid var(--line)}.note b{color:var(--ink)}
+pre{font-size:10.5px;padding:14px;color:#a8bcd8;overflow:auto;line-height:1.7}
+footer{margin-top:26px;border-top:1px solid var(--line);padding-top:14px;color:var(--muted);font-size:11px;display:flex;gap:16px}
+a{color:var(--pp);text-decoration:none}a:hover{text-decoration:underline}
+</style>
 </head>
 <body>
-
+<div class="wrap">
   <header>
-    <div class="badge">Devpost Hackathon • PayPal AI Track ($67,500)</div>
-    <h1>PayPal Agentic Checkout Gateway 💳🤖</h1>
-    <p class="subtitle">Autonomous AI Agent commerce infrastructure connecting LLM tools with PayPal Sandbox Orders API v2, x402 payment headers, and strict spending guardrails.</p>
-    <div class="btn-group">
-      <a href="https://github.com/liutingqiu/paypal-agentic-checkout-sdk" target="_blank" class="btn btn-primary">
-        GitHub Repository
-      </a>
-      <a href="https://paypalaihackathon.devpost.com/" target="_blank" class="btn btn-secondary">
-        Devpost PayPal Hackathon
-      </a>
+    <div>
+      <div class="eyebrow">PayPal AI Hackathon &middot; Orders v2</div>
+      <h1>Agent <em>Checkout</em></h1>
+      <p class="sub">Purchase trace: guardrail decision, order creation and capture, each an HTTP round trip recorded by the client.</p>
     </div>
+    <div class="eyebrow" id="ep">-</div>
   </header>
-
-  <div class="container">
-    <!-- Top Stats -->
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-lbl">PayPal Environment</div>
-        <div class="stat-val" style="font-size: 1.15rem; color: #fff;">Sandbox REST API v2</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-lbl">Daily Budget Remaining</div>
-        <div class="stat-val" id="valRemaining" style="color: var(--secondary);">$455.00 / $500.00</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-lbl">Autonomous Limit</div>
-        <div class="stat-val" style="font-size: 1.15rem; color: var(--paypal-gold);">&le; $30 Auto-Approved</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-lbl">Payment Protocol</div>
-        <div class="stat-val" style="font-size: 1.15rem; color: var(--accent);">HTTP 402 + Orders v2</div>
-      </div>
+  <div class="stats" id="stats"></div>
+  <div class="cols">
+    <div class="panel">
+      <h2><span>Decision trace</span><span id="status">-</span></h2>
+      <table><tbody id="trace"></tbody></table>
+      <div class="note" id="reason"></div>
     </div>
-
-    <!-- Main Grid -->
-    <div class="dashboard-grid">
-      <!-- Left: Agent Storefront Simulation -->
-      <div class="panel">
-        <div class="panel-title">
-          <span>🛒 Agent Micro-Services & API Storefront</span>
-          <span style="font-size: 0.8rem; color: var(--secondary); font-weight: 600;">Autonomous Shopping</span>
-        </div>
-
-        <div class="item-card">
-          <div>
-            <div class="item-title">Cloud AI Compute Token Slice</div>
-            <div class="item-desc">10,000 GPU tokens • Auto-approved under $30 cap</div>
-          </div>
-          <button class="btn-buy" onclick="simulateAgentPurchase('GPU Token Slice', 15.0)">
-            Buy $15.00
-          </button>
-        </div>
-
-        <div class="item-card">
-          <div>
-            <div class="item-title">Decentralized Storage Quota (100GB)</div>
-            <div class="item-desc">Monthly persistent IPFS quota • Auto-approved</div>
-          </div>
-          <button class="btn-buy" onclick="simulateAgentPurchase('Storage Quota', 25.0)">
-            Buy $25.00
-          </button>
-        </div>
-
-        <div class="item-card">
-          <div>
-            <div class="item-title">Enterprise Security Audit Report</div>
-            <div class="item-desc">Comprehensive vulnerability analysis • Requires confirmation</div>
-          </div>
-          <button class="btn-buy" onclick="simulateAgentPurchase('Audit Report', 85.0)">
-            Buy $85.00
-          </button>
-        </div>
-
-        <div class="item-card">
-          <div>
-            <div class="item-title">High-Tier Server Rack Reservation</div>
-            <div class="item-desc">Exceeds single transaction cap ($150 cap) • Rejection Test</div>
-          </div>
-          <button class="btn-buy" style="background: #ef4444; color: #fff;" onclick="simulateAgentPurchase('Server Rack', 250.0)">
-            Buy $250.00
-          </button>
-        </div>
-      </div>
-
-      <!-- Right: Live Terminal & Audit Trail -->
-      <div class="panel">
-        <div class="panel-title">
-          <span>📋 Real-Time PayPal Agent Audit Trail</span>
-          <span style="font-size: 0.8rem; color: var(--accent);">Live Sandbox Orders</span>
-        </div>
-
-        <div class="log-box" id="terminalLog">
-          [PayPal Agent] Gateway initialized. Connected to api-m.sandbox.paypal.com v2.
-          <br>[Guardrails] Active limits: Max $150/tx | Daily Budget $500 | Auto-Approve &le; $30.
-        </div>
-      </div>
+    <div class="panel">
+      <h2>HTTP calls</h2>
+      <table><thead><tr><th>#</th><th>path</th><th>status</th><th>ms</th></tr></thead><tbody id="calls"></tbody></table>
+      <div class="note">Guardrails run before the first request: a blocked or unapproved purchase produces zero order calls, which is visible here as an empty table.</div>
     </div>
   </div>
+  <div class="panel" style="margin-top:18px">
+    <h2>Reproduce</h2>
+    <pre>npm install &amp;&amp; npm run build
+node scripts/contract-server.mjs --port 8899
+PAYPAL_CLIENT_ID=contract-client PAYPAL_CLIENT_SECRET=contract-secret \
+  PAYPAL_BASE_URL=http://127.0.0.1:8899 npm run cli -- --amount 12.50 --merchant "Corner Coffee"
 
+# real sandbox: set PAYPAL_CLIENT_ID/SECRET from developer.paypal.com and drop PAYPAL_BASE_URL</pre>
+    <div class="note">Without credentials the CLI stops before creating an order. The previous version invented an access token with <b>Math.random()</b>; this one calls <b>/v1/oauth2/token</b> and fails if it cannot.</div>
+  </div>
   <footer>
-    <p>Submitted to the <strong>PayPal AI Hackathon ($67,500 USD)</strong> on Devpost • Open Source MIT License</p>
-    <p style="margin-top: 0.25rem;">Repository: <a href="https://github.com/liutingqiu/paypal-agentic-checkout-sdk" target="_blank">github.com/liutingqiu/paypal-agentic-checkout-sdk</a></p>
+    <a href="https://github.com/liutingqiu/paypal-agentic-checkout-sdk">repository</a>
+    <a href="docs/technical-report.md">technical report</a>
   </footer>
-
-  <script>
-    let remainingBudget = 455.0;
-
-    function simulateAgentPurchase(itemName, amount) {
-      const log = document.getElementById('terminalLog');
-      const time = new Date().toLocaleTimeString();
-
-      log.innerHTML += `<br><br>[${time}] [Purchase Intent] Agent triggered buy: <strong>${itemName}</strong> ($${amount.toFixed(2)} USD)`;
-
-      // Guardrail evaluation
-      if (amount > 150.0) {
-        log.innerHTML += `<br>[${time}] ❌ [Guardrail REJECTED] Exceeds max single transaction cap ($${amount} > $150.00). Transaction aborted.`;
-        log.scrollTop = log.scrollHeight;
-        return;
-      }
-
-      if (amount > remainingBudget) {
-        log.innerHTML += `<br>[${time}] ❌ [Guardrail REJECTED] Exceeds daily budget limit. Transaction aborted.`;
-        log.scrollTop = log.scrollHeight;
-        return;
-      }
-
-      if (amount > 30.0) {
-        log.innerHTML += `<br>[${time}] ⚠️ [Guardrail NOTICE] Amount > $30.00 requires user biometric confirmation.`;
-      } else {
-        log.innerHTML += `<br>[${time}] ✅ [Guardrail PASSED] Autonomous purchase permitted under $30.00 auto-approve rule.`;
-      }
-
-      // Order creation simulation
-      const orderId = 'PAYPAL_ORDER_' + Math.random().toString(36).substring(2, 9).toUpperCase();
-      const captureId = 'CAPTURE_' + Math.random().toString(36).substring(2, 9).toUpperCase();
-      remainingBudget -= amount;
-
-      document.getElementById('valRemaining').innerText = `$${remainingBudget.toFixed(2)} / $500.00`;
-
-      log.innerHTML += `<br>[${time}] [PayPal v2] Created Order: <code>${orderId}</code> (Capture Mode)`;
-      log.innerHTML += `<br>[${time}] [PayPal Capture] Successfully captured $${amount.toFixed(2)} USD! Capture ID: <code>${captureId}</code>`;
-      log.scrollTop = log.scrollHeight;
-    }
-  </script>
+</div>
+<script>
+async function boot(){
+  var m={},calls=[];
+  try{m=await (await fetch("data/metrics.json")).json();}catch(e){}
+  try{calls=await (await fetch("data/requests.json")).json();}catch(e){}
+  document.getElementById("ep").textContent="endpoint: "+(m.endpoint||"-");
+  document.getElementById("status").textContent=m.status||"-";
+  var lat=m.latencyMs||{};
+  var stats=[["status",m.status||"-"],["order",(m.orderId||"-").slice(0,14)],["captured",(m.capturedAmount||"-")+" USD"],["http calls",m.httpRequests||0],["retries",m.retries||0],["p50",(lat.p50||0)+" ms"],["wall",(m.wallMs||0)+" ms"],["spent today",(m.spentToday||0)+" USD"]];
+  document.getElementById("stats").innerHTML=stats.map(function(x){return "<div class=\"stat\"><div class=\"k\">"+x[0]+"</div><div class=\"v\">"+x[1]+"</div></div>";}).join("");
+  var tr=m.trace||[];
+  document.getElementById("trace").innerHTML=tr.map(function(s){
+    return "<tr><td>"+(s.ok?"<span class=\"ok\">ok</span>":"<span class=\"fail\">stop</span>")+"</td><td class=\"step\">"+s.step+"</td><td>"+s.detail+"</td><td>"+s.durationMs+" ms</td></tr>";
+  }).join("")||"<tr><td colspan=\"4\">no trace</td></tr>";
+  document.getElementById("reason").innerHTML="<b>Reason:</b> "+(m.reason||"-");
+  document.getElementById("calls").innerHTML=(calls||[]).map(function(r,i){
+    return "<tr><td>"+(i+1)+"</td><td>"+r.path+"</td><td>"+r.status+"</td><td>"+r.durationMs+"</td></tr>";
+  }).join("")||"<tr><td colspan=\"4\" style=\"color:#8b98b8\">no HTTP calls were made</td></tr>";
+}
+boot();
+</script>
 </body>
 </html>

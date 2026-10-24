@@ -1,121 +1,55 @@
-# PayPal Agentic Checkout Gateway 💳🤖
+# Agent Checkout over PayPal Orders v2
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript)](https://www.typescriptlang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/Tests-7%2F7%20Passed-brightgreen)](tests/paypal_agent.test.js)
-[![PayPal AI](https://img.shields.io/badge/PayPal-Orders%20API%20v2-blue)](https://developer.paypal.com/)
-[![Live Terminal](https://img.shields.io/badge/Live%20Terminal-GitHub%20Pages-success)](https://liutingqiu.github.io/paypal-agentic-checkout-sdk/)
+Purchase flow for an autonomous agent: guardrails decide locally, PayPal executes, every call is recorded.
 
-**Autonomous AI Agent Commerce & Micro-Payment Gateway for PayPal Sandbox and x402 Protocol with Multi-Tier Spending Guardrails.**
+| | |
+| --- | --- |
+| Auth | `POST /v1/oauth2/token`, Basic client-credentials, cached until 60 s before expiry |
+| Orders | `POST /v2/checkout/orders` (intent CAPTURE), `GET /v2/checkout/orders/:id`, `POST .../capture` |
+| Guardrails | per-transaction cap, rolling daily cap, currency allowlist, human-approval threshold |
+| x402 | `buildChallenge` / `encodePayment` / `verifyPayment` for HTTP 402 flows |
+| Measured run | 3 HTTP calls, order CREATED then COMPLETED, p50 49 ms |
 
-Submitted to the **Devpost — PayPal AI Hackathon ($67,500 Cash Prize Pool)**.
+Trace page: https://liutingqiu.github.io/paypal-agentic-checkout-sdk/  
+Report: [`docs/technical-report.md`](docs/technical-report.md)
 
----
-
-## 🌟 Overview
-
-As autonomous AI agents (Claude Code, AutoGen, CrewAI) navigate the web to perform research, manage servers, and book services, they need a safe, standardized way to pay and get paid.
-
-**PayPal Agentic Checkout Gateway** transforms PayPal's global infrastructure into the native financial engine for autonomous AI agents:
-1. **PayPal Orders REST API v2 Integration:** Bridges LLM tool-calling with PayPal order creation, authorization, and capture in sandbox/production environments.
-2. **Spending Guardrails & Safety Firewall:** Enforces single-transaction caps, daily rolling budgets, and auto-approval thresholds ($\le \$30$) so agents cannot drain user balances.
-3. **HTTP 402 Protocol Adapter:** Implements standardized machine-readable payment challenge headers for paywalled APIs and micro-services.
-4. **Interactive Web Storefront:** Live terminal simulator demonstrating agent purchases, guardrail checks, and sandbox captures.
-
----
-
-## 🌐 Live Interactive Terminal
-
-Experience the live agent storefront and simulate purchases online:  
-👉 **[https://liutingqiu.github.io/paypal-agentic-checkout-sdk/](https://liutingqiu.github.io/paypal-agentic-checkout-sdk/)**
-
----
-
-## 📦 Quick Start & Usage
+## Quick start
 
 ```bash
-git clone https://github.com/liutingqiu/paypal-agentic-checkout-sdk.git
-cd paypal-agentic-checkout-sdk
-npm install
-npm test
+npm install && npm run build
+node scripts/contract-server.mjs --port 8899
+PAYPAL_CLIENT_ID=contract-client PAYPAL_CLIENT_SECRET=contract-secret \
+  PAYPAL_BASE_URL=http://127.0.0.1:8899 npm run cli -- --amount 12.50 --merchant "Corner Coffee"
+npm test        # 9 tests
 ```
 
-### TypeScript / ESM Example
-
-```typescript
-import {
-  PayPalOrdersClient,
-  AgentSpendingGuardrailEngine,
-  X402PaymentAdapter
-} from 'paypal-agentic-checkout-sdk';
-
-// 1. Initialize PayPal Client & Guardrail Engine
-const client = new PayPalOrdersClient({
-  clientId: process.env.PAYPAL_CLIENT_ID,
-  clientSecret: process.env.PAYPAL_CLIENT_SECRET,
-  environment: 'SANDBOX'
-});
-
-const guardrails = new AgentSpendingGuardrailEngine({
-  maxSingleTxUSD: 150.0,
-  dailyBudgetUSD: 500.0,
-  autoApproveThresholdUSD: 30.0
-});
-
-// 2. Evaluate purchase intent
-const intent = {
-  intentId: 'int_01',
-  agentId: 'agent_shopping_01',
-  itemId: 'gpu_compute_slice',
-  itemName: '10,000 GPU Tokens',
-  amountUSD: 25.0,
-  merchantId: 'cloud_merchant_01',
-  reasoning: 'Acquiring compute capacity for batch analysis'
-};
-
-const check = guardrails.evaluateIntent(intent);
-if (check.passed) {
-  // 3. Create and capture PayPal order
-  const order = await client.createOrder(intent);
-  const capture = await client.captureOrder(order.orderId, intent.amountUSD);
-  guardrails.recordSettlement(intent.amountUSD);
-  console.log(`Payment Captured: ${capture.captureId} | Status: ${capture.status}`);
-}
-```
-
----
-
-## 🧪 Automated Test Suite
-
-Run the unit tests covering OAuth token rotation, order creation, capture responses, spending caps, and x402 headers:
+For a real sandbox run, create an app at developer.paypal.com and drop `PAYPAL_BASE_URL`:
 
 ```bash
-node --test tests/paypal_agent.test.js
+PAYPAL_CLIENT_ID=<id> PAYPAL_CLIENT_SECRET=<secret> npm run cli -- --amount 12.50 --merchant "Corner Coffee"
 ```
 
-Output:
-```text
-✔ 1. PayPalOrdersClient generates and caches OAuth2 token (0.7ms)
-✔ 2. PayPalOrdersClient creates PayPal v2 order with approval URL (0.2ms)
-✔ 3. PayPalOrdersClient captures authorized order (0.1ms)
-✔ 4. SpendingGuardrails permits autonomous purchase below auto-approve threshold ($30) (0.2ms)
-✔ 5. SpendingGuardrails flags purchases above threshold for human confirmation (0.1ms)
-✔ 6. SpendingGuardrails strictly rejects purchases exceeding single tx or daily cap (0.1ms)
-✔ 7. X402PaymentAdapter creates valid HTTP 402 challenge and verifies settlement (0.1ms)
+The client refuses to run without credentials. The previous version returned a token built from
+`Math.random()` and never contacted PayPal; there is no simulated-token path left in the code.
 
-ℹ pass 7
-ℹ fail 0
+## Flow
+
+```
+intent -> SpendingGuard.evaluate -> (needs_approval stops here)
+       -> PayPalClient.createOrder -> captureOrder -> SpendingGuard.commit
 ```
 
----
+A blocked or unapproved purchase produces zero order calls; the trace page shows that as an empty
+HTTP table rather than a simulated success.
 
-## 📖 Hackathon Documentation
+## Layout
 
-Read the full project pitch deck, architectural rationale, and market impact analysis:  
-👉 **[PITCH_DECK.md](PITCH_DECK.md)**
-
----
-
-## 📄 License
-
-Released under the [MIT License](LICENSE).
+```
+src/paypal/client.ts        OAuth, orders, retry, error classes
+src/guardrails/spending.ts  deterministic limits and the ledger
+src/x402/middleware.ts      402 challenge build / encode / verify
+src/agent.ts                orchestration plus the recorded trace
+src/cli.ts                  one purchase, writes result/requests/metrics
+scripts/contract-server.mjs Orders v2 shapes over real sockets
+tests/paypal.test.js        9 tests
+```

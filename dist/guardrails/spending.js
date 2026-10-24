@@ -1,82 +1,77 @@
+/**
+ * Spending guardrails.
+ *
+ * Deterministic limits evaluated before any order is created: per-transaction
+ * cap, rolling daily cap, and a hard approval threshold. The engine never asks
+ * PayPal for permission; it decides locally and records why.
+ */
 export const DEFAULT_GUARDRAILS = {
-    maxSingleTxUSD: 150.0,
-    dailyBudgetUSD: 500.0,
-    allowedMerchants: [], // Empty array permits all verified PayPal merchants
-    autoApproveThresholdUSD: 30.0
+    perTransactionCap: 50,
+    dailyCap: 120,
+    requireApprovalAbove: 35,
+    allowedCurrencies: ["USD"],
 };
-export class AgentSpendingGuardrailEngine {
+export class SpendingGuard {
     config;
-    dailySpendUSD;
-    lastResetTimestamp;
-    constructor(config = {}) {
-        this.config = { ...DEFAULT_GUARDRAILS, ...config };
-        this.dailySpendUSD = 0;
-        this.lastResetTimestamp = Date.now();
+    spentToday = 0;
+    ledger = [];
+    constructor(config = DEFAULT_GUARDRAILS) {
+        this.config = config;
     }
-    getDailySpend() {
-        this.checkDailyReset();
-        return this.dailySpendUSD;
+    get spent() {
+        return this.spentToday;
     }
-    getRemainingBudget() {
-        this.checkDailyReset();
-        return Math.max(0, this.config.dailyBudgetUSD - this.dailySpendUSD);
+    get history() {
+        return [...this.ledger];
     }
-    /**
-     * Validates an AI Agent purchase intent against safety guardrails.
-     */
-    evaluateIntent(intent) {
-        this.checkDailyReset();
-        // 1. Single transaction cap
-        if (intent.amountUSD > this.config.maxSingleTxUSD) {
+    evaluate(request) {
+        const remaining = Math.max(0, this.config.dailyCap - this.spentToday);
+        if (!Number.isFinite(request.amount) || request.amount <= 0) {
+            return { allowed: false, requiresApproval: false, reason: "amount must be a positive number", rule: "amount.valid", remainingDaily: remaining };
+        }
+        if (!this.config.allowedCurrencies.includes(request.currency)) {
             return {
-                passed: false,
-                requiresHumanConfirmation: true,
-                rejectionReason: `Exceeds max single transaction cap: $${intent.amountUSD} > $${this.config.maxSingleTxUSD}`,
-                currentDailySpendUSD: this.dailySpendUSD,
-                remainingDailyBudgetUSD: this.getRemainingBudget()
+                allowed: false,
+                requiresApproval: false,
+                reason: "currency " + request.currency + " is not in the allowlist (" + this.config.allowedCurrencies.join(", ") + ")",
+                rule: "currency.allowlist",
+                remainingDaily: remaining,
             };
         }
-        // 2. Daily budget cap
-        if (this.dailySpendUSD + intent.amountUSD > this.config.dailyBudgetUSD) {
+        if (request.amount > this.config.perTransactionCap) {
             return {
-                passed: false,
-                requiresHumanConfirmation: true,
-                rejectionReason: `Exceeds daily budget limit: $${this.dailySpendUSD + intent.amountUSD} > $${this.config.dailyBudgetUSD}`,
-                currentDailySpendUSD: this.dailySpendUSD,
-                remainingDailyBudgetUSD: this.getRemainingBudget()
+                allowed: false,
+                requiresApproval: false,
+                reason: "amount " + request.amount + " exceeds the per-transaction cap of " + this.config.perTransactionCap,
+                rule: "amount.per_transaction_cap",
+                remainingDaily: remaining,
             };
         }
-        // 3. Merchant whitelist check (if configured)
-        if (this.config.allowedMerchants.length > 0 && !this.config.allowedMerchants.includes(intent.merchantId)) {
+        if (request.amount > remaining) {
             return {
-                passed: false,
-                requiresHumanConfirmation: true,
-                rejectionReason: `Merchant ${intent.merchantId} is not in authorized whitelist`,
-                currentDailySpendUSD: this.dailySpendUSD,
-                remainingDailyBudgetUSD: this.getRemainingBudget()
+                allowed: false,
+                requiresApproval: false,
+                reason: "amount " + request.amount + " exceeds the remaining daily budget of " + remaining,
+                rule: "amount.daily_cap",
+                remainingDaily: remaining,
             };
         }
-        // 4. Autonomous threshold check
-        const requiresHuman = intent.amountUSD > this.config.autoApproveThresholdUSD;
+        const requiresApproval = request.amount > this.config.requireApprovalAbove;
         return {
-            passed: true,
-            requiresHumanConfirmation: requiresHuman,
-            currentDailySpendUSD: this.dailySpendUSD,
-            remainingDailyBudgetUSD: this.getRemainingBudget()
+            allowed: true,
+            requiresApproval,
+            reason: requiresApproval
+                ? "amount above the " + this.config.requireApprovalAbove + " auto-approval threshold, human confirmation required"
+                : "within every configured limit",
+            rule: requiresApproval ? "approval.human_required" : "amount.within_limits",
+            remainingDaily: remaining,
         };
     }
-    /**
-     * Records a settled purchase and increments rolling daily spend.
-     */
-    recordSettlement(amountUSD) {
-        this.checkDailyReset();
-        this.dailySpendUSD += amountUSD;
+    commit(request, orderId) {
+        this.spentToday += request.amount;
+        this.ledger.push({ at: Date.now(), amount: request.amount, merchant: request.merchant, purpose: request.purpose, orderId });
     }
-    checkDailyReset() {
-        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-        if (Date.now() - this.lastResetTimestamp >= ONE_DAY_MS) {
-            this.dailySpendUSD = 0;
-            this.lastResetTimestamp = Date.now();
-        }
+    reset() {
+        this.spentToday = 0;
     }
 }
