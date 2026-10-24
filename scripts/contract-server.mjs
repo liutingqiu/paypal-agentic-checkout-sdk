@@ -21,6 +21,9 @@ const flag = (name, fallback) => {
 const PORT = flag("port", 8899);
 const LATENCY = flag("latency", 0);
 let FAIL_FIRST = flag("fail-first", 0);
+// Models a payer who has already approved the order, so the capture half of the
+// two-phase flow can be exercised without a browser session.
+const AUTO_APPROVE = args.includes("--auto-approve");
 
 const CLIENT_ID = process.env.PAYPAL_CONTRACT_CLIENT_ID ?? "contract-client";
 const CLIENT_SECRET = process.env.PAYPAL_CONTRACT_CLIENT_SECRET ?? "contract-secret";
@@ -68,7 +71,15 @@ const server = createServer(async (req, res) => {
     for await (const chunk of req) chunks.push(chunk);
     const body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
     const id = "ORD-" + Math.random().toString(36).slice(2, 10).toUpperCase();
-    const order = { id, status: "CREATED", intent: body.intent ?? "CAPTURE", purchase_units: body.purchase_units ?? [] };
+    const order = {
+      id,
+      status: AUTO_APPROVE ? "APPROVED" : "CREATED",
+      intent: body.intent ?? "CAPTURE",
+      purchase_units: body.purchase_units ?? [],
+      links: [
+        { href: "https://www.sandbox.paypal.com/checkoutnow?token=" + id, rel: "payer-action", method: "GET" },
+      ],
+    };
     orders.set(id, order);
     return send(res, 201, order);
   }
@@ -79,7 +90,10 @@ const server = createServer(async (req, res) => {
     const order = orders.get(id);
     if (!order) return send(res, 404, { name: "RESOURCE_NOT_FOUND", message: "order " + id + " not found" });
     if (match[2] && req.method === "POST") {
-      if (order.status !== "CREATED") return send(res, 422, { name: "ORDER_ALREADY_CAPTURED", message: order.status });
+      if (order.status === "COMPLETED") return send(res, 422, { name: "ORDER_ALREADY_CAPTURED", message: order.status });
+      if (order.status !== "APPROVED") {
+        return send(res, 422, { name: "UNPROCESSABLE_ENTITY", details: [{ issue: "ORDER_NOT_APPROVED", description: "Payer has not yet approved the Order for payment." }] });
+      }
       order.status = "COMPLETED";
       return send(res, 201, order);
     }

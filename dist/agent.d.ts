@@ -16,9 +16,10 @@ export interface PurchaseTrace {
     durationMs: number;
 }
 export interface PurchaseResult {
-    status: "completed" | "rejected" | "needs_approval" | "failed";
+    status: "completed" | "rejected" | "needs_approval" | "awaiting_payer" | "failed";
     reason: string;
     orderId?: string;
+    approvalUrl?: string;
     capturedAmount?: string;
     trace: PurchaseTrace[];
 }
@@ -30,5 +31,6 @@ export declare class CheckoutAgent {
     purchase(intent: PurchaseIntent, options?: {
         approved?: boolean;
         referenceId?: string;
+        skipPayerApproval?: boolean;
     }): Promise<PurchaseResult>;
 }

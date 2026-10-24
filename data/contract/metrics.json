@@ -1,0 +1,45 @@
+{
+  "status": "completed",
+  "reason": "capture returned COMPLETED",
+  "orderId": "ORD-3KSE8QP8",
+  "capturedAmount": "12.50",
+  "httpRequests": 3,
+  "httpStatuses": [
+    200,
+    201
+  ],
+  "retries": 0,
+  "latencyMs": {
+    "p50": 55,
+    "max": 92
+  },
+  "endpoint": "contract-server",
+  "wallMs": 137,
+  "spentToday": 12.5,
+  "trace": [
+    {
+      "step": "guardrail.evaluate",
+      "ok": true,
+      "detail": "amount.within_limits :: within every configured limit",
+      "durationMs": 0
+    },
+    {
+      "step": "paypal.create_order",
+      "ok": true,
+      "detail": "order ORD-3KSE8QP8 status APPROVED",
+      "durationMs": 92
+    },
+    {
+      "step": "paypal.capture_order",
+      "ok": true,
+      "detail": "status COMPLETED",
+      "durationMs": 44
+    },
+    {
+      "step": "guardrail.commit",
+      "ok": true,
+      "detail": "ledger updated, spent today 12.5",
+      "durationMs": 0
+    }
+  ]
+}

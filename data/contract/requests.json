@@ -1,0 +1,23 @@
+[
+  {
+    "method": "POST",
+    "path": "/v1/oauth2/token",
+    "status": 200,
+    "durationMs": 55,
+    "attempt": 0
+  },
+  {
+    "method": "POST",
+    "path": "/v2/checkout/orders",
+    "status": 201,
+    "durationMs": 92,
+    "attempt": 0
+  },
+  {
+    "method": "POST",
+    "path": "/v2/checkout/orders/ORD-3KSE8QP8/capture",
+    "status": 201,
+    "durationMs": 44,
+    "attempt": 0
+  }
+]

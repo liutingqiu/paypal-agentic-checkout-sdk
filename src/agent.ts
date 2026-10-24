@@ -19,9 +19,10 @@ export interface PurchaseTrace {
 }
 
 export interface PurchaseResult {
-  status: "completed" | "rejected" | "needs_approval" | "failed";
+  status: "completed" | "rejected" | "needs_approval" | "awaiting_payer" | "failed";
   reason: string;
   orderId?: string;
+  approvalUrl?: string;
   capturedAmount?: string;
   trace: PurchaseTrace[];
 }
@@ -49,7 +50,10 @@ export class CheckoutAgent {
     }
   }
 
-  async purchase(intent: PurchaseIntent, options: { approved?: boolean; referenceId?: string } = {}): Promise<PurchaseResult> {
+  async purchase(
+    intent: PurchaseIntent,
+    options: { approved?: boolean; referenceId?: string; skipPayerApproval?: boolean } = {},
+  ): Promise<PurchaseResult> {
     const trace: PurchaseTrace[] = [];
 
     const decision = this.guard.evaluate(intent);
@@ -73,13 +77,39 @@ export class CheckoutAgent {
     trace.push(created.trace);
     if (!created.value) return { status: "failed", reason: created.trace.detail, trace };
 
+    // A freshly created order with the PayPal payment source is CREATED, not
+    // APPROVED: the payer has to approve it on the approval URL before capture is
+    // legal. Skipping this check is what produces UNPROCESSABLE_ENTITY
+    // ORDER_NOT_APPROVED, so the link is returned instead of guessed away.
+    const approvalUrl = (created.value.links ?? []).find(
+      (link) => link.rel === "payer-action" || link.rel === "approve",
+    )?.href;
+
+    if (!options.skipPayerApproval && created.value.status !== "APPROVED") {
+      trace.push({
+        step: "paypal.await_payer_approval",
+        ok: Boolean(approvalUrl),
+        detail: approvalUrl
+          ? "order " + created.value.id + " is CREATED; payer approval required at " + approvalUrl
+          : "order " + created.value.id + " has no approval link",
+        durationMs: 0,
+      });
+      return {
+        status: "awaiting_payer",
+        reason: "PayPal requires payer approval before capture",
+        orderId: created.value.id,
+        approvalUrl,
+        trace,
+      };
+    }
+
     const captured = await this.step(
       "paypal.capture_order",
       () => this.client.captureOrder(created.value!.id),
       (order) => "status " + order.status,
     );
     trace.push(captured.trace);
-    if (!captured.value) return { status: "failed", reason: captured.trace.detail, orderId: created.value.id, trace };
+    if (!captured.value) return { status: "failed", reason: captured.trace.detail, orderId: created.value.id, approvalUrl, trace };
 
     this.guard.commit(intent, created.value.id);
     trace.push({ step: "guardrail.commit", ok: true, detail: "ledger updated, spent today " + this.guard.spent, durationMs: 0 });

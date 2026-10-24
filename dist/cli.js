@@ -36,6 +36,19 @@ async function main() {
         return 2;
     }
     const started = Date.now();
+    // Second half of the two-phase flow: capture an order the payer approved.
+    const captureOrderId = arg("capture-order");
+    if (captureOrderId) {
+        const order = await client.getOrder(captureOrderId);
+        const statusBefore = order.status;
+        const captured = await client.captureOrder(captureOrderId);
+        mkdirSync(outDir, { recursive: true });
+        writeFileSync(join(outDir, "capture.json"), JSON.stringify(captured, null, 2));
+        const summary = { orderId: captureOrderId, statusBefore, statusAfter: captured.status, requests: records.length };
+        writeFileSync(join(outDir, "metrics.json"), JSON.stringify(summary, null, 2));
+        console.log(JSON.stringify(summary, null, 2));
+        return captured.status === "COMPLETED" ? 0 : 1;
+    }
     const result = await agent.purchase({ amount, currency: "USD", merchant, purpose }, { approved });
     const wallMs = Date.now() - started;
     const durations = records.map((record) => Number(record.durationMs)).sort((a, b) => a - b);

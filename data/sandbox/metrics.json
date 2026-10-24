@@ -1,0 +1,39 @@
+{
+  "status": "awaiting_payer",
+  "reason": "PayPal requires payer approval before capture",
+  "orderId": "3AK81340R0019721S",
+  "capturedAmount": null,
+  "httpRequests": 2,
+  "httpStatuses": [
+    200,
+    201
+  ],
+  "retries": 0,
+  "latencyMs": {
+    "p50": 1531,
+    "max": 1531
+  },
+  "endpoint": "https://api-m.sandbox.paypal.com",
+  "wallMs": 1531,
+  "spentToday": 0,
+  "trace": [
+    {
+      "step": "guardrail.evaluate",
+      "ok": true,
+      "detail": "amount.within_limits :: within every configured limit",
+      "durationMs": 0
+    },
+    {
+      "step": "paypal.create_order",
+      "ok": true,
+      "detail": "order 3AK81340R0019721S status CREATED",
+      "durationMs": 1531
+    },
+    {
+      "step": "paypal.await_payer_approval",
+      "ok": true,
+      "detail": "order 3AK81340R0019721S is CREATED; payer approval required at https://www.sandbox.paypal.com/checkoutnow?token=3AK81340R0019721S",
+      "durationMs": 0
+    }
+  ]
+}

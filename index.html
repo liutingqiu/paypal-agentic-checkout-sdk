@@ -2,32 +2,34 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Agent Checkout - purchase trace</title>
+<title>Agent Checkout - two runs, one code path</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
 <style>
 :root{--bg:#06080f;--panel:#0d1220;--line:#1e2740;--ink:#e9eefb;--muted:#8b98b8;--pp:#38bdf8;--ok:#34d399;--warn:#fbbf24}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:radial-gradient(900px 460px at 20% -10%,#10203f 0%,var(--bg) 62%);color:var(--ink);font-family:"IBM Plex Mono",monospace;line-height:1.55}
-.wrap{max-width:1080px;margin:0 auto;padding:32px 22px 70px}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 22px 70px}
 header{display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px;align-items:flex-end;border-bottom:1px solid var(--line);padding-bottom:16px}
 h1{font-family:"Space Grotesk",sans-serif;font-size:clamp(21px,3vw,34px)}h1 em{color:var(--pp);font-style:normal}
 .eyebrow{color:var(--muted);font-size:11px;letter-spacing:.2em;text-transform:uppercase}
-.sub{color:var(--muted);font-size:12px;margin-top:7px;max-width:620px}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:22px}
-.stat{background:#0a0f1c;padding:12px 14px}
-.stat .k{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.stat .v{font-family:"Space Grotesk",sans-serif;font-size:20px;margin-top:2px}
-.cols{display:grid;grid-template-columns:1.15fr 1fr;gap:18px;margin-top:20px}
-@media(max-width:880px){.cols{grid-template-columns:1fr}}
+.sub{color:var(--muted);font-size:12px;margin-top:7px;max-width:640px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
 .panel{background:linear-gradient(180deg,rgba(15,22,38,.95),rgba(8,11,20,.96));border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.panel h2{font-family:"Space Grotesk",sans-serif;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
-table{width:100%;border-collapse:collapse;font-size:11.5px}
-td,th{padding:8px 13px;border-bottom:1px solid rgba(30,39,64,.85);text-align:left}
-th{color:var(--muted);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:500}
+.panel h2{font-family:"Space Grotesk",sans-serif;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.tag{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.1em;border:1px solid var(--line);border-radius:999px;padding:2px 8px}
+.real{color:var(--ok);border-color:rgba(52,211,153,.4)}.fixture{color:var(--warn);border-color:rgba(251,191,36,.4)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:1px;background:var(--line)}
+.stat{background:#0a0f1c;padding:11px 13px}
+.stat .k{font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+.stat .v{font-family:"Space Grotesk",sans-serif;font-size:17px;margin-top:2px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+td,th{padding:7px 13px;border-bottom:1px solid rgba(30,39,64,.85);text-align:left;vertical-align:top}
+th{color:var(--muted);font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:500}
 .ok{color:var(--ok)}.fail{color:var(--warn)}.step{color:var(--pp)}
 .note{padding:12px 14px;font-size:11px;color:var(--muted);border-top:1px solid var(--line)}.note b{color:var(--ink)}
 pre{font-size:10.5px;padding:14px;color:#a8bcd8;overflow:auto;line-height:1.7}
-footer{margin-top:26px;border-top:1px solid var(--line);padding-top:14px;color:var(--muted);font-size:11px;display:flex;gap:16px}
+footer{margin-top:26px;border-top:1px solid var(--line);padding-top:14px;color:var(--muted);font-size:11px;display:flex;gap:16px;flex-wrap:wrap}
 a{color:var(--pp);text-decoration:none}a:hover{text-decoration:underline}
 </style>
 </head>
@@ -37,32 +39,43 @@ a{color:var(--pp);text-decoration:none}a:hover{text-decoration:underline}
     <div>
       <div class="eyebrow">PayPal AI Hackathon &middot; Orders v2</div>
       <h1>Agent <em>Checkout</em></h1>
-      <p class="sub">Purchase trace: guardrail decision, order creation and capture, each an HTTP round trip recorded by the client.</p>
+      <p class="sub">The same client produced both records below: one against the live sandbox, one against the local transport fixture. They are labelled so the difference is not hidden.</p>
     </div>
-    <div class="eyebrow" id="ep">-</div>
   </header>
-  <div class="stats" id="stats"></div>
   <div class="cols">
     <div class="panel">
-      <h2><span>Decision trace</span><span id="status">-</span></h2>
-      <table><tbody id="trace"></tbody></table>
-      <div class="note" id="reason"></div>
+      <h2><span>Sandbox run</span><span class="tag real">real paypal</span></h2>
+      <div class="stats" id="statsReal"></div>
+      <table><tbody id="traceReal"></tbody></table>
+      <div class="note" id="noteReal"></div>
     </div>
     <div class="panel">
-      <h2>HTTP calls</h2>
-      <table><thead><tr><th>#</th><th>path</th><th>status</th><th>ms</th></tr></thead><tbody id="calls"></tbody></table>
-      <div class="note">Guardrails run before the first request: a blocked or unapproved purchase produces zero order calls, which is visible here as an empty table.</div>
+      <h2><span>Fixture run</span><span class="tag fixture">contract server</span></h2>
+      <div class="stats" id="statsFix"></div>
+      <table><tbody id="traceFix"></tbody></table>
+      <div class="note" id="noteFix"></div>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:18px">
+    <h2>Why the sandbox run stops at awaiting_payer</h2>
+    <div class="note" style="border-top:none">
+      A freshly created PayPal order is <b>CREATED</b>, not approved. Capturing it returns <b>422 UNPROCESSABLE_ENTITY / ORDER_NOT_APPROVED</b>, which is why this code now returns the approval link instead of assuming capture is legal. The real flow is: create order, hand the payer the <b>payer-action</b> link, capture after approval (<b>--capture-order</b>). The fixture run models a payer who already approved, which is the only way to exercise the capture path offline.
     </div>
   </div>
   <div class="panel" style="margin-top:18px">
     <h2>Reproduce</h2>
     <pre>npm install &amp;&amp; npm run build
-node scripts/contract-server.mjs --port 8899
-PAYPAL_CLIENT_ID=contract-client PAYPAL_CLIENT_SECRET=contract-secret \
-  PAYPAL_BASE_URL=http://127.0.0.1:8899 npm run cli -- --amount 12.50 --merchant "Corner Coffee"
 
-# real sandbox: set PAYPAL_CLIENT_ID/SECRET from developer.paypal.com and drop PAYPAL_BASE_URL</pre>
-    <div class="note">Without credentials the CLI stops before creating an order. The previous version invented an access token with <b>Math.random()</b>; this one calls <b>/v1/oauth2/token</b> and fails if it cannot.</div>
+# real sandbox
+PAYPAL_CLIENT_ID=... PAYPAL_CLIENT_SECRET=... npm run cli -- --amount 1.00 --merchant "Sandbox Coffee Co"
+
+# after the payer approves on the returned link
+PAYPAL_CLIENT_ID=... PAYPAL_CLIENT_SECRET=... npm run cli -- --capture-order &lt;ORDER_ID&gt;
+
+# offline fixture
+node scripts/contract-server.mjs --port 8899 --auto-approve
+PAYPAL_CLIENT_ID=contract-client PAYPAL_CLIENT_SECRET=contract-secret \
+  PAYPAL_BASE_URL=http://127.0.0.1:8899 npm run cli -- --amount 12.50</pre>
   </div>
   <footer>
     <a href="https://github.com/liutingqiu/paypal-agentic-checkout-sdk">repository</a>
@@ -70,23 +83,27 @@ PAYPAL_CLIENT_ID=contract-client PAYPAL_CLIENT_SECRET=contract-secret \
   </footer>
 </div>
 <script>
+function stat(u,v){return "<div class=\"stat\"><div class=\"k\">"+u+"</div><div class=\"v\">"+v+"</div></div>";}
+function rows(trace){return (trace||[]).map(function(s){
+  return "<tr><td>"+(s.ok?"<span class=\"ok\">ok</span>":"<span class=\"fail\">stop</span>")+"</td><td class=\"step\">"+s.step+"</td><td>"+s.detail+"</td><td>"+s.durationMs+" ms</td></tr>";
+}).join("")||"<tr><td colspan=\"4\">no trace</td></tr>";}
+async function load(path){try{return await (await fetch(path)).json();}catch(e){return {};}}
 async function boot(){
-  var m={},calls=[];
-  try{m=await (await fetch("data/metrics.json")).json();}catch(e){}
-  try{calls=await (await fetch("data/requests.json")).json();}catch(e){}
-  document.getElementById("ep").textContent="endpoint: "+(m.endpoint||"-");
-  document.getElementById("status").textContent=m.status||"-";
-  var lat=m.latencyMs||{};
-  var stats=[["status",m.status||"-"],["order",(m.orderId||"-").slice(0,14)],["captured",(m.capturedAmount||"-")+" USD"],["http calls",m.httpRequests||0],["retries",m.retries||0],["p50",(lat.p50||0)+" ms"],["wall",(m.wallMs||0)+" ms"],["spent today",(m.spentToday||0)+" USD"]];
-  document.getElementById("stats").innerHTML=stats.map(function(x){return "<div class=\"stat\"><div class=\"k\">"+x[0]+"</div><div class=\"v\">"+x[1]+"</div></div>";}).join("");
-  var tr=m.trace||[];
-  document.getElementById("trace").innerHTML=tr.map(function(s){
-    return "<tr><td>"+(s.ok?"<span class=\"ok\">ok</span>":"<span class=\"fail\">stop</span>")+"</td><td class=\"step\">"+s.step+"</td><td>"+s.detail+"</td><td>"+s.durationMs+" ms</td></tr>";
-  }).join("")||"<tr><td colspan=\"4\">no trace</td></tr>";
-  document.getElementById("reason").innerHTML="<b>Reason:</b> "+(m.reason||"-");
-  document.getElementById("calls").innerHTML=(calls||[]).map(function(r,i){
-    return "<tr><td>"+(i+1)+"</td><td>"+r.path+"</td><td>"+r.status+"</td><td>"+r.durationMs+"</td></tr>";
-  }).join("")||"<tr><td colspan=\"4\" style=\"color:#8b98b8\">no HTTP calls were made</td></tr>";
+  var real=await load("data/sandbox/metrics.json");
+  var fix=await load("data/contract/metrics.json");
+  var latR=real.latencyMs||{}, latF=fix.latencyMs||{};
+  document.getElementById("statsReal").innerHTML=[
+    stat("status",real.status||"-"),stat("order",(real.orderId||"-").slice(0,13)),
+    stat("http",(real.httpRequests||0)),stat("p50",(latR.p50||0)+"ms")
+  ].join("");
+  document.getElementById("traceReal").innerHTML=rows(real.trace);
+  document.getElementById("noteReal").innerHTML="<b>Reason:</b> "+(real.reason||"-")+"<br><b>Approval link:</b> "+(real.approvalUrl||"(on next line of the run)")+"<br>Latency here is a real PayPal round trip, not loopback.";
+  document.getElementById("statsFix").innerHTML=[
+    stat("status",fix.status||"-"),stat("order",(fix.orderId||"-").slice(0,13)),
+    stat("http",(fix.httpRequests||0)),stat("p50",(latF.p50||0)+"ms")
+  ].join("");
+  document.getElementById("traceFix").innerHTML=rows(fix.trace);
+  document.getElementById("noteFix").innerHTML="<b>Reason:</b> "+(fix.reason||"-")+"<br>This run verifies the capture code path end to end. It proves the client, not PayPal.";
 }
 boot();
 </script>
