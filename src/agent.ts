@@ -52,7 +52,12 @@ export class CheckoutAgent {
 
   async purchase(
     intent: PurchaseIntent,
-    options: { approved?: boolean; referenceId?: string; skipPayerApproval?: boolean } = {},
+    options: {
+      approved?: boolean;
+      referenceId?: string;
+      skipPayerApproval?: boolean;
+      card?: { number: string; expiry: string; securityCode: string; billingName?: string };
+    } = {},
   ): Promise<PurchaseResult> {
     const trace: PurchaseTrace[] = [];
 
@@ -71,7 +76,13 @@ export class CheckoutAgent {
     const amount: OrderAmount = { currency_code: intent.currency, value: intent.amount.toFixed(2) };
     const created = await this.step(
       "paypal.create_order",
-      () => this.client.createOrder({ amount, referenceId: options.referenceId ?? "agent-purchase", customId: intent.purpose.slice(0, 120) }),
+      () =>
+        this.client.createOrder({
+          amount,
+          referenceId: options.referenceId ?? "agent-purchase",
+          customId: intent.purpose.slice(0, 120),
+          card: options.card,
+        }),
       (order) => "order " + order.id + " status " + order.status,
     );
     trace.push(created.trace);
@@ -85,7 +96,29 @@ export class CheckoutAgent {
       (link) => link.rel === "payer-action" || link.rel === "approve",
     )?.href;
 
-    if (!options.skipPayerApproval && created.value.status !== "APPROVED") {
+    // A card payment source settles immediately: PayPal returns COMPLETED from
+    // create, and a second capture is rejected with ORDER_ALREADY_CAPTURED.
+    if (created.value.status === "COMPLETED") {
+      trace.push({
+        step: "paypal.settled_on_create",
+        ok: true,
+        detail: "order " + created.value.id + " returned COMPLETED, capture not needed",
+        durationMs: 0,
+      });
+      this.guard.commit(intent, created.value.id);
+      trace.push({ step: "guardrail.commit", ok: true, detail: "ledger updated, spent today " + this.guard.spent, durationMs: 0 });
+      return {
+        status: "completed",
+        reason: "card settlement completed during order creation",
+        orderId: created.value.id,
+        capturedAmount: amount.value,
+        trace,
+      };
+    }
+
+    // A card payment source is approved out of band, so capture is legal straight away.
+    const needsPayer = !options.card && !options.skipPayerApproval;
+    if (needsPayer && created.value.status !== "APPROVED") {
       trace.push({
         step: "paypal.await_payer_approval",
         ok: Boolean(approvalUrl),

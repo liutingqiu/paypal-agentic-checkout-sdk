@@ -72,6 +72,15 @@ export declare class PayPalClient {
         referenceId?: string;
         customId?: string;
         description?: string;
+        /** Optional card payment source: with a card the payer approves out of band, so
+         *  capture does not need a browser session. Test cards only. */
+        card?: {
+            number: string;
+            expiry: string;
+            securityCode: string;
+            brand?: string;
+            billingName?: string;
+        };
     }): Promise<PayPalOrder>;
     getOrder(orderId: string): Promise<PayPalOrder>;
     captureOrder(orderId: string): Promise<PayPalOrder>;

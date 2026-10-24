@@ -1,0 +1,16 @@
+[
+  {
+    "method": "POST",
+    "path": "/v1/oauth2/token",
+    "status": 200,
+    "durationMs": 830,
+    "attempt": 0
+  },
+  {
+    "method": "POST",
+    "path": "/v2/checkout/orders",
+    "status": 201,
+    "durationMs": 4156,
+    "attempt": 0
+  }
+]

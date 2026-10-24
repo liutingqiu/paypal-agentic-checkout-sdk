@@ -1,0 +1,32 @@
+{
+  "status": "completed",
+  "reason": "card settlement completed during order creation",
+  "orderId": "4VB84323BA045715C",
+  "capturedAmount": "1.00",
+  "trace": [
+    {
+      "step": "guardrail.evaluate",
+      "ok": true,
+      "detail": "amount.within_limits :: within every configured limit",
+      "durationMs": 0
+    },
+    {
+      "step": "paypal.create_order",
+      "ok": true,
+      "detail": "order 4VB84323BA045715C status COMPLETED",
+      "durationMs": 4156
+    },
+    {
+      "step": "paypal.settled_on_create",
+      "ok": true,
+      "detail": "order 4VB84323BA045715C returned COMPLETED, capture not needed",
+      "durationMs": 0
+    },
+    {
+      "step": "guardrail.commit",
+      "ok": true,
+      "detail": "ledger updated, spent today 1",
+      "durationMs": 0
+    }
+  ]
+}

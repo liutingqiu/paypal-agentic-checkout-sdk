@@ -12,6 +12,7 @@
  * client refuses to run, and the contract server exists so the transport path can
  * be tested offline.
  */
+import { randomUUID } from "node:crypto";
 export class PayPalAuthError extends Error {
     constructor(message) {
         super(message);
@@ -146,7 +147,23 @@ export class PayPalClient {
                 },
             ],
         };
-        const response = await this.send("POST", "/v2/checkout/orders", { body: payload, auth: "bearer" });
+        if (input.card) {
+            payload.payment_source = {
+                card: {
+                    number: input.card.number,
+                    expiry: input.card.expiry,
+                    security_code: input.card.securityCode,
+                    name: input.card.billingName ?? "Sandbox Agent",
+                    billing_address: { country_code: "US" },
+                },
+            };
+        }
+        // PayPal requires an idempotency key whenever a payment_source is supplied.
+        const response = await this.send("POST", "/v2/checkout/orders", {
+            body: payload,
+            auth: "bearer",
+            headers: { "paypal-request-id": randomUUID() },
+        });
         return response.json;
     }
     async getOrder(orderId) {

@@ -32,5 +32,11 @@ export declare class CheckoutAgent {
         approved?: boolean;
         referenceId?: string;
         skipPayerApproval?: boolean;
+        card?: {
+            number: string;
+            expiry: string;
+            securityCode: string;
+            billingName?: string;
+        };
     }): Promise<PurchaseResult>;
 }

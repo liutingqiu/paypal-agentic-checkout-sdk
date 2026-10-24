@@ -2,32 +2,31 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Agent Checkout - two runs, one code path</title>
+<title>Agent Checkout - three recorded runs</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
 <style>
 :root{--bg:#06080f;--panel:#0d1220;--line:#1e2740;--ink:#e9eefb;--muted:#8b98b8;--pp:#38bdf8;--ok:#34d399;--warn:#fbbf24}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:radial-gradient(900px 460px at 20% -10%,#10203f 0%,var(--bg) 62%);color:var(--ink);font-family:"IBM Plex Mono",monospace;line-height:1.55}
-.wrap{max-width:1180px;margin:0 auto;padding:32px 22px 70px}
+.wrap{max-width:1240px;margin:0 auto;padding:32px 22px 70px}
 header{display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px;align-items:flex-end;border-bottom:1px solid var(--line);padding-bottom:16px}
 h1{font-family:"Space Grotesk",sans-serif;font-size:clamp(21px,3vw,34px)}h1 em{color:var(--pp);font-style:normal}
 .eyebrow{color:var(--muted);font-size:11px;letter-spacing:.2em;text-transform:uppercase}
-.sub{color:var(--muted);font-size:12px;margin-top:7px;max-width:640px}
-.cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px}
-@media(max-width:900px){.cols{grid-template-columns:1fr}}
+.sub{color:var(--muted);font-size:12px;margin-top:7px;max-width:680px}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}
+@media(max-width:1000px){.cols{grid-template-columns:1fr}}
 .panel{background:linear-gradient(180deg,rgba(15,22,38,.95),rgba(8,11,20,.96));border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.panel h2{font-family:"Space Grotesk",sans-serif;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
-.tag{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.1em;border:1px solid var(--line);border-radius:999px;padding:2px 8px}
+.panel h2{font-family:"Space Grotesk",sans-serif;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tag{font-size:9px;letter-spacing:.1em;border:1px solid var(--line);border-radius:999px;padding:2px 7px;white-space:nowrap}
 .real{color:var(--ok);border-color:rgba(52,211,153,.4)}.fixture{color:var(--warn);border-color:rgba(251,191,36,.4)}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:1px;background:var(--line)}
-.stat{background:#0a0f1c;padding:11px 13px}
-.stat .k{font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
-.stat .v{font-family:"Space Grotesk",sans-serif;font-size:17px;margin-top:2px}
-table{width:100%;border-collapse:collapse;font-size:11px}
-td,th{padding:7px 13px;border-bottom:1px solid rgba(30,39,64,.85);text-align:left;vertical-align:top}
-th{color:var(--muted);font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:500}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:1px;background:var(--line)}
+.stat{background:#0a0f1c;padding:10px 12px}
+.stat .k{font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.stat .v{font-family:"Space Grotesk",sans-serif;font-size:15px;margin-top:2px;word-break:break-all}
+table{width:100%;border-collapse:collapse;font-size:10.5px}
+td,th{padding:6px 12px;border-bottom:1px solid rgba(30,39,64,.85);text-align:left;vertical-align:top}
 .ok{color:var(--ok)}.fail{color:var(--warn)}.step{color:var(--pp)}
-.note{padding:12px 14px;font-size:11px;color:var(--muted);border-top:1px solid var(--line)}.note b{color:var(--ink)}
+.note{padding:11px 13px;font-size:10.5px;color:var(--muted);border-top:1px solid var(--line)}.note b{color:var(--ink)}
 pre{font-size:10.5px;padding:14px;color:#a8bcd8;overflow:auto;line-height:1.7}
 footer{margin-top:26px;border-top:1px solid var(--line);padding-top:14px;color:var(--muted);font-size:11px;display:flex;gap:16px;flex-wrap:wrap}
 a{color:var(--pp);text-decoration:none}a:hover{text-decoration:underline}
@@ -39,38 +38,47 @@ a{color:var(--pp);text-decoration:none}a:hover{text-decoration:underline}
     <div>
       <div class="eyebrow">PayPal AI Hackathon &middot; Orders v2</div>
       <h1>Agent <em>Checkout</em></h1>
-      <p class="sub">The same client produced both records below: one against the live sandbox, one against the local transport fixture. They are labelled so the difference is not hidden.</p>
+      <p class="sub">Three records from one client. Two hit api-m.sandbox.paypal.com for real; one runs against the local fixture. Each panel says which, because the difference matters.</p>
     </div>
   </header>
   <div class="cols">
     <div class="panel">
-      <h2><span>Sandbox run</span><span class="tag real">real paypal</span></h2>
-      <div class="stats" id="statsReal"></div>
-      <table><tbody id="traceReal"></tbody></table>
-      <div class="note" id="noteReal"></div>
+      <h2><span>Card settlement</span><span class="tag real">live sandbox</span></h2>
+      <div class="stats" id="s1"></div>
+      <table><tbody id="t1"></tbody></table>
+      <div class="note" id="n1"></div>
     </div>
     <div class="panel">
-      <h2><span>Fixture run</span><span class="tag fixture">contract server</span></h2>
-      <div class="stats" id="statsFix"></div>
-      <table><tbody id="traceFix"></tbody></table>
-      <div class="note" id="noteFix"></div>
+      <h2><span>Wallet approval</span><span class="tag real">live sandbox</span></h2>
+      <div class="stats" id="s2"></div>
+      <table><tbody id="t2"></tbody></table>
+      <div class="note" id="n2"></div>
+    </div>
+    <div class="panel">
+      <h2><span>Fixture capture</span><span class="tag fixture">contract server</span></h2>
+      <div class="stats" id="s3"></div>
+      <table><tbody id="t3"></tbody></table>
+      <div class="note" id="n3"></div>
     </div>
   </div>
-  <div class="panel" style="margin-top:18px">
-    <h2>Why the sandbox run stops at awaiting_payer</h2>
+  <div class="panel" style="margin-top:16px">
+    <h2>What the live runs changed in the code</h2>
     <div class="note" style="border-top:none">
-      A freshly created PayPal order is <b>CREATED</b>, not approved. Capturing it returns <b>422 UNPROCESSABLE_ENTITY / ORDER_NOT_APPROVED</b>, which is why this code now returns the approval link instead of assuming capture is legal. The real flow is: create order, hand the payer the <b>payer-action</b> link, capture after approval (<b>--capture-order</b>). The fixture run models a payer who already approved, which is the only way to exercise the capture path offline.
+      <b>1. Capture needs approval.</b> A wallet order comes back CREATED and capture returns 422 ORDER_NOT_APPROVED, so the agent now stops at awaiting_payer and hands back the payer-action link.<br>
+      <b>2. payment_source needs an idempotency key.</b> Posting a card without PayPal-Request-Id returns 400 PAYPAL_REQUEST_ID_REQUIRED.<br>
+      <b>3. Cards settle at creation.</b> A card order returns COMPLETED from POST /orders, and a second capture is rejected with 422 ORDER_ALREADY_CAPTURED, so the agent treats that status as done and skips capture.
     </div>
   </div>
-  <div class="panel" style="margin-top:18px">
+  <div class="panel" style="margin-top:16px">
     <h2>Reproduce</h2>
     <pre>npm install &amp;&amp; npm run build
 
-# real sandbox
-PAYPAL_CLIENT_ID=... PAYPAL_CLIENT_SECRET=... npm run cli -- --amount 1.00 --merchant "Sandbox Coffee Co"
+# live card settlement
+PAYPAL_CLIENT_ID=... PAYPAL_CLIENT_SECRET=... PAYPAL_TEST_CARD=4111111111111111 \
+  npm run cli -- --amount 1.00 --merchant "Sandbox Coffee Co" --card
 
-# after the payer approves on the returned link
-PAYPAL_CLIENT_ID=... PAYPAL_CLIENT_SECRET=... npm run cli -- --capture-order &lt;ORDER_ID&gt;
+# live wallet order (needs a human to approve, then --capture-order)
+PAYPAL_CLIENT_ID=... PAYPAL_CLIENT_SECRET=... npm run cli -- --amount 1.00
 
 # offline fixture
 node scripts/contract-server.mjs --port 8899 --auto-approve
@@ -85,25 +93,22 @@ PAYPAL_CLIENT_ID=contract-client PAYPAL_CLIENT_SECRET=contract-secret \
 <script>
 function stat(u,v){return "<div class=\"stat\"><div class=\"k\">"+u+"</div><div class=\"v\">"+v+"</div></div>";}
 function rows(trace){return (trace||[]).map(function(s){
-  return "<tr><td>"+(s.ok?"<span class=\"ok\">ok</span>":"<span class=\"fail\">stop</span>")+"</td><td class=\"step\">"+s.step+"</td><td>"+s.detail+"</td><td>"+s.durationMs+" ms</td></tr>";
-}).join("")||"<tr><td colspan=\"4\">no trace</td></tr>";}
-async function load(path){try{return await (await fetch(path)).json();}catch(e){return {};}}
+  return "<tr><td>"+(s.ok?"<span class=\"ok\">ok</span>":"<span class=\"fail\">stop</span>")+"</td><td class=\"step\">"+s.step+"</td><td>"+s.durationMs+" ms</td></tr>";
+}).join("")||"<tr><td colspan=\"3\">no trace</td></tr>";}
+async function load(p){try{return await (await fetch(p)).json();}catch(e){return {};}}
 async function boot(){
-  var real=await load("data/sandbox/metrics.json");
+  var card=await load("data/sandbox-card/metrics.json");
+  var wallet=await load("data/sandbox/metrics.json");
   var fix=await load("data/contract/metrics.json");
-  var latR=real.latencyMs||{}, latF=fix.latencyMs||{};
-  document.getElementById("statsReal").innerHTML=[
-    stat("status",real.status||"-"),stat("order",(real.orderId||"-").slice(0,13)),
-    stat("http",(real.httpRequests||0)),stat("p50",(latR.p50||0)+"ms")
-  ].join("");
-  document.getElementById("traceReal").innerHTML=rows(real.trace);
-  document.getElementById("noteReal").innerHTML="<b>Reason:</b> "+(real.reason||"-")+"<br><b>Approval link:</b> "+(real.approvalUrl||"(on next line of the run)")+"<br>Latency here is a real PayPal round trip, not loopback.";
-  document.getElementById("statsFix").innerHTML=[
-    stat("status",fix.status||"-"),stat("order",(fix.orderId||"-").slice(0,13)),
-    stat("http",(fix.httpRequests||0)),stat("p50",(latF.p50||0)+"ms")
-  ].join("");
-  document.getElementById("traceFix").innerHTML=rows(fix.trace);
-  document.getElementById("noteFix").innerHTML="<b>Reason:</b> "+(fix.reason||"-")+"<br>This run verifies the capture code path end to end. It proves the client, not PayPal.";
+  document.getElementById("s1").innerHTML=[stat("status",card.status||"-"),stat("order",(card.orderId||"-").slice(0,12)),stat("amount",(card.capturedAmount||"-")+" USD"),stat("rtt",(card.latencyMs&&card.latencyMs.p50||0)+"ms")].join("");
+  document.getElementById("t1").innerHTML=rows(card.trace);
+  document.getElementById("n1").innerHTML="<b>"+(card.reason||"-")+"</b><br>Real PayPal round trip: "+(card.httpRequests||0)+" calls, status "+(card.httpStatuses||[]).join("/")+".";
+  document.getElementById("s2").innerHTML=[stat("status",wallet.status||"-"),stat("order",(wallet.orderId||"-").slice(0,12)),stat("calls",wallet.httpRequests||0)].join("");
+  document.getElementById("t2").innerHTML=rows(wallet.trace);
+  document.getElementById("n2").innerHTML="<b>"+(wallet.reason||"-")+"</b><br>Stops by design: PayPal will not let a server capture a wallet order nobody approved.";
+  document.getElementById("s3").innerHTML=[stat("status",fix.status||"-"),stat("order",(fix.orderId||"-").slice(0,12)),stat("calls",fix.httpRequests||0)].join("");
+  document.getElementById("t3").innerHTML=rows(fix.trace);
+  document.getElementById("n3").innerHTML="<b>"+(fix.reason||"-")+"</b><br>Proves the capture branch, not PayPal.";
 }
 boot();
 </script>

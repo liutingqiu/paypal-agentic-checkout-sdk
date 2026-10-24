@@ -9,75 +9,75 @@
 
 ## 1. What was wrong before
 
-The submitted `PayPalOrdersClient.getAccessToken()` carried the comment "High-performance token
-simulator for sandbox testing" and built `A21AA` + `Math.random()`. `createOrder` assembled an object
-locally. `api-m.sandbox.paypal.com` appeared only as a string from `getBaseUrl()`. Nothing in the
-repository had ever contacted PayPal.
+The submitted client carried the comment "High-performance token simulator for sandbox testing" on
+`getAccessToken()`, which built a token from `Math.random()`. `createOrder` assembled its object
+locally, and `api-m.sandbox.paypal.com` existed only as a string. No request had ever left the
+process.
 
 ## 2. Integration surface
 
 | Call | Purpose |
 | --- | --- |
-| `POST /v1/oauth2/token` | client-credentials grant, Basic auth, cached until 60 s before `expires_in` |
-| `POST /v2/checkout/orders` | `intent: CAPTURE`, one purchase unit |
+| `POST /v1/oauth2/token` | client-credentials grant, Basic auth, cached until 60 s before expiry |
+| `POST /v2/checkout/orders` | `intent: CAPTURE`; optional `payment_source.card`; `PayPal-Request-Id` always sent |
 | `GET /v2/checkout/orders/:id` | state lookup before capture |
-| `POST /v2/checkout/orders/:id/capture` | capture, status drives the run result |
+| `POST /v2/checkout/orders/:id/capture` | capture, only when the order is APPROVED |
 
-401/403 raises `PayPalAuthError` and is never retried. 429/5xx retry with doubling backoff plus
-jitter. Every attempt is recorded with status and duration.
+401/403 raises `PayPalAuthError` without retry; 429/5xx retry with doubling backoff plus jitter.
+Each attempt is recorded with status and duration.
 
-## 3. Real sandbox evidence
+## 3. Live sandbox evidence
 
-Run against `https://api-m.sandbox.paypal.com` with a sandbox app created on the developer dashboard:
+Two runs against `https://api-m.sandbox.paypal.com`, sandbox app created on the developer dashboard.
 
-| Step | Result |
-| --- | --- |
-| `POST /v1/oauth2/token` | 200, access token issued |
-| `POST /v2/checkout/orders` | 201, order `3AK81340R0019721S`, status `CREATED`, `payer-action` link returned |
-| `POST .../capture` (before approval) | **422** `UNPROCESSABLE_ENTITY`, issue `ORDER_NOT_APPROVED` |
-| Round-trip latency | 1548 ms (create), 702 ms (rejected capture), 905 ms p50 |
+**Card settlement (completed).** Order `4VB84323BA045715C`, 1.00 USD, 2 HTTP calls (token, create),
+201 on create with status `COMPLETED`, p50 round trip 4156 ms. Settlement happened during creation,
+so no capture was issued.
 
-That 422 is the finding that changed the design. The first version of this integration assumed
-create-then-capture; PayPal requires payer approval in between. The agent now stops at
-`awaiting_payer` and returns the approval link, and `--capture-order` performs the second phase.
+**Wallet approval (awaiting_payer).** Order `3AK81340R0019721S` created with status `CREATED` and a
+`payer-action` link. A direct capture attempt returned:
 
-The sandbox checkout page itself would not accept an automated confirmation click, so the approval
-and the resulting `COMPLETED` capture were not executed in this session. What is proven: the token,
-the order creation, the approval-link issuance, and the fact that capture without approval fails in
-exactly the documented way.
+```
+422 UNPROCESSABLE_ENTITY
+details: ORDER_NOT_APPROVED  "Payer has not yet approved the Order for payment."
+```
 
-## 4. Fixture evidence
+That response is the most useful thing the sandbox produced, because it invalidated the original
+create-then-capture assumption. The agent now returns the approval link and stops; `--capture-order`
+completes the flow once a payer approves.
+
+## 4. Contract fixture
 
 `scripts/contract-server.mjs --auto-approve` models a payer who already approved, which is the only
-way to run the capture path without a human:
-
-| Metric | Value |
-| --- | --- |
-| Order | `ORD-3KSE8QP8` |
-| Status | completed |
-| HTTP calls | 3 (token, create, capture) |
-| Latency p50 | 25 ms injected + overhead |
-
-This run proves the client and the state machine. It does not prove PayPal accepts the request; §3
-is what covers that, and §3 stops one step earlier.
+way to run the approved-capture branch without a human: order `ORD-3KSE8QP8`, `CREATED -> APPROVED
+-> COMPLETED`, 3 calls. It proves the client and state machine; §3 proves PayPal accepts the
+requests.
 
 ## 5. Guardrails
 
-Evaluated before any network call, each with its own rule id: `amount.valid`,
-`currency.allowlist`, `amount.per_transaction_cap`, `amount.daily_cap`,
-`approval.human_required`. `commit()` writes the ledger only after a successful capture, so a failed
-capture cannot consume budget. Tests assert that an unapproved purchase produces zero order calls.
+Evaluated before any network call, each with a rule id: `amount.valid`, `currency.allowlist`,
+`amount.per_transaction_cap`, `amount.daily_cap`, `approval.human_required`. The ledger commits
+only after settlement, so neither a rejected purchase nor a failed capture consumes budget. Tests
+assert an unapproved purchase issues zero order calls.
 
 ## 6. x402
 
-`buildChallenge()` returns 402 with an `x-payment-required` base64 JSON requirement (scheme, network,
-amount, currency, payTo, resource, expiry, nonce). `verifyPayment()` checks expiry, nonce, payee,
-currency and that the offered amount covers the requirement. Only the challenge and verification
-halves are implemented; settlement is the PayPal capture, and no crypto rail is touched.
+`buildChallenge()` returns 402 with an `x-payment-required` base64 JSON requirement; `verifyPayment()`
+checks expiry, nonce, payee, currency and amount coverage. Only the challenge and verification halves
+are implemented; settlement stays on PayPal.
 
-## 7. Limitations
+## 7. What the sandbox forced us to change
 
-* No `COMPLETED` sandbox transaction: the payer approval needs a human at the PayPal checkout page.
-* No webhook handling; capture is confirmed by response only.
+| Finding | Change |
+| --- | --- |
+| `422 ORDER_NOT_APPROVED` on capture | two-phase flow, approval link returned, `--capture-order` |
+| `400 PAYPAL_REQUEST_ID_REQUIRED` with `payment_source` | `PayPal-Request-Id` sent on every create |
+| `201` with status `COMPLETED` for card | settlement branch, capture skipped, ledger committed |
+
+## 8. Limitations
+
+* Card settlement used PayPal's documented sandbox test card, not a real funding instrument.
+* The wallet approval leg was not completed end to end: the sandbox checkout page refused an
+  automated confirmation click, so `COMPLETED` for the wallet path rests on §4 rather than §3.
+* No webhook handling; settlement is confirmed by the create/capture response only.
 * Guardrail state is in-memory and resets on restart.
-* The contract server models approval with a flag rather than implementing the approval handshake.

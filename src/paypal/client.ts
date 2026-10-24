@@ -13,6 +13,8 @@
  * be tested offline.
  */
 
+import { randomUUID } from "node:crypto";
+
 export interface PayPalConfig {
   clientId: string;
   clientSecret: string;
@@ -164,8 +166,17 @@ export class PayPalClient {
     referenceId?: string;
     customId?: string;
     description?: string;
+    /** Optional card payment source: with a card the payer approves out of band, so
+     *  capture does not need a browser session. Test cards only. */
+    card?: {
+      number: string;
+      expiry: string;
+      securityCode: string;
+      brand?: string;
+      billingName?: string;
+    };
   }): Promise<PayPalOrder> {
-    const payload = {
+    const payload: Record<string, unknown> = {
       intent: "CAPTURE",
       purchase_units: [
         {
@@ -176,7 +187,23 @@ export class PayPalClient {
         },
       ],
     };
-    const response = await this.send("POST", "/v2/checkout/orders", { body: payload, auth: "bearer" });
+    if (input.card) {
+      payload.payment_source = {
+        card: {
+          number: input.card.number,
+          expiry: input.card.expiry,
+          security_code: input.card.securityCode,
+          name: input.card.billingName ?? "Sandbox Agent",
+          billing_address: { country_code: "US" },
+        },
+      };
+    }
+    // PayPal requires an idempotency key whenever a payment_source is supplied.
+    const response = await this.send("POST", "/v2/checkout/orders", {
+      body: payload,
+      auth: "bearer",
+      headers: { "paypal-request-id": randomUUID() },
+    });
     return response.json as unknown as PayPalOrder;
   }
 

@@ -49,7 +49,10 @@ async function main() {
         console.log(JSON.stringify(summary, null, 2));
         return captured.status === "COMPLETED" ? 0 : 1;
     }
-    const result = await agent.purchase({ amount, currency: "USD", merchant, purpose }, { approved });
+    const card = process.argv.includes("--card")
+        ? { number: process.env.PAYPAL_TEST_CARD ?? "4032039899785273", expiry: "2030-12", securityCode: "123", billingName: "Sandbox Agent" }
+        : undefined;
+    const result = await agent.purchase({ amount, currency: "USD", merchant, purpose }, { approved, card });
     const wallMs = Date.now() - started;
     const durations = records.map((record) => Number(record.durationMs)).sort((a, b) => a - b);
     const metrics = {
